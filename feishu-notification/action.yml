@@ -61,7 +61,7 @@ runs:
         if [ "${{ inputs.status }}" = "started" ]; then
           TITLE="🚀 ${{ inputs.project_name }} Build #${{ inputs.run_number }} Started"
           TEMPLATE="grey"
-          CONTENT="**User:** ${{ inputs.actor }}\\n**Project:** ${{ inputs.project_name }}\\n**Branch:** ${{ inputs.branch }}\\n**Start Time:** ${CURRENT_TIME}\\n\\n**Commit:** [${{ inputs.commit_sha }}](${{ inputs.commit_url }})\\n\\n**Status:** Building..."
+          CONTENT="**User:** ${{ inputs.actor }}\\n**Project:** ${{ inputs.project_name }}\\n**Branch:** ${{ inputs.branch }}\\n**Start Time:** ${CURRENT_TIME}\\n\\n**Commit:** [${{ inputs.commit_sha }}](${{ inputs.commit_url }})\\n**Message:** ${{ inputs.commit_message }}\\n\\n**Status:** Building..."
           BUTTON_TEXT="View Workflow"
           BUTTON_URL="${{ inputs.workflow_url }}"
         elif [ "${{ inputs.status }}" = "success" ]; then
