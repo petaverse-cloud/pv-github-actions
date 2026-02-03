@@ -1,0 +1,128 @@
+name: 'Feishu Notification'
+description: 'Send build notifications to Feishu (Lark) using webhook'
+author: 'Petaverse DevOps Team'
+
+inputs:
+  webhook_url:
+    description: 'Feishu webhook URL'
+    required: true
+  status:
+    description: 'Build status: started, success, or failure'
+    required: true
+  project_name:
+    description: 'Project name to display in notification'
+    required: true
+  run_number:
+    description: 'GitHub Actions run number'
+    required: false
+    default: ${{ github.run_number }}
+  actor:
+    description: 'User who triggered the workflow'
+    required: false
+    default: ${{ github.actor }}
+  branch:
+    description: 'Git branch name'
+    required: false
+    default: ${{ github.ref_name }}
+  commit_sha:
+    description: 'Git commit SHA (short)'
+    required: false
+  commit_message:
+    description: 'Git commit message'
+    required: false
+  start_time:
+    description: 'Build start time'
+    required: false
+  build_duration:
+    description: 'Build duration (e.g., 120s)'
+    required: false
+  image_info:
+    description: 'Docker image information'
+    required: false
+  workflow_url:
+    description: 'GitHub Actions workflow URL'
+    required: false
+    default: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  commit_url:
+    description: 'Git commit URL'
+    required: false
+    default: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Send Feishu notification
+      shell: bash
+      run: |
+        # Get current time
+        CURRENT_TIME=$(date -u +'%Y-%m-%d %H:%M:%S')
+
+        # Set title and content based on status
+        if [ "${{ inputs.status }}" = "started" ]; then
+          TITLE="🚀 ${{ inputs.project_name }} Build #${{ inputs.run_number }} Started"
+          CONTENT='[
+            [{"tag": "text", "text": "User: ${{ inputs.actor }}\n"}],
+            [{"tag": "text", "text": "Project: ${{ inputs.project_name }}\n"}],
+            [{"tag": "text", "text": "Branch: ${{ inputs.branch }}\n"}],
+            [{"tag": "text", "text": "Start Time: '"${CURRENT_TIME}"'\n"}],
+            [{"tag": "text", "text": "\n"}],
+            [{"tag": "text", "text": "Code: ${{ inputs.branch }} "},
+             {"tag": "a", "text": "${{ inputs.commit_sha }}", "href": "${{ inputs.commit_url }}"}],
+            [{"tag": "text", "text": "\nStatus: Building..."}]
+          ]'
+        elif [ "${{ inputs.status }}" = "success" ]; then
+          TITLE="✅ ${{ inputs.project_name }} Build #${{ inputs.run_number }} Succeeded"
+          CONTENT='[
+            [{"tag": "text", "text": "User: ${{ inputs.actor }}\n"}],
+            [{"tag": "text", "text": "Project: ${{ inputs.project_name }}\n"}],
+            [{"tag": "text", "text": "Branch: ${{ inputs.branch }}\n"}],
+            [{"tag": "text", "text": "Start Time: ${{ inputs.start_time }}\n"}],
+            [{"tag": "text", "text": "Completion Time: '"${CURRENT_TIME}"'\n"}],
+            [{"tag": "text", "text": "Duration: ${{ inputs.build_duration }}\n"}],
+            [{"tag": "text", "text": "\n"}],
+            [{"tag": "text", "text": "Code: ${{ inputs.branch }} "},
+             {"tag": "a", "text": "${{ inputs.commit_sha }}", "href": "${{ inputs.commit_url }}"}],
+            [{"tag": "text", "text": "\nCommit Message: ${{ inputs.commit_message }}\n"}],
+            [{"tag": "text", "text": "\n"}],
+            [{"tag": "text", "text": "Image: ${{ inputs.image_info }}\n"}],
+            [{"tag": "text", "text": "\n"}],
+            [{"tag": "text", "text": "Status: ✅ Pushed to ACR\n"}],
+            [{"tag": "text", "text": "\n"}],
+            [{"tag": "a", "text": "View Workflow", "href": "${{ inputs.workflow_url }}"}]
+          ]'
+        else
+          TITLE="❌ ${{ inputs.project_name }} Build #${{ inputs.run_number }} Failed"
+          CONTENT='[
+            [{"tag": "text", "text": "User: ${{ inputs.actor }}\n"}],
+            [{"tag": "text", "text": "Project: ${{ inputs.project_name }}\n"}],
+            [{"tag": "text", "text": "Branch: ${{ inputs.branch }}\n"}],
+            [{"tag": "text", "text": "Start Time: ${{ inputs.start_time }}\n"}],
+            [{"tag": "text", "text": "Failure Time: '"${CURRENT_TIME}"'\n"}],
+            [{"tag": "text", "text": "\n"}],
+            [{"tag": "text", "text": "Code: ${{ inputs.branch }} "},
+             {"tag": "a", "text": "${{ inputs.commit_sha }}", "href": "${{ inputs.commit_url }}"}],
+            [{"tag": "text", "text": "\n"}],
+            [{"tag": "text", "text": "Status: ❌ Build or push failed\n"}],
+            [{"tag": "text", "text": "\n"}],
+            [{"tag": "a", "text": "View Error Logs", "href": "${{ inputs.workflow_url }}"}]
+          ]'
+        fi
+
+        # Send Feishu notification
+        curl -X POST "${{ inputs.webhook_url }}" \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "msg_type": "post",
+            "content": {
+              "post": {
+                "zh_cn": {
+                  "title": "'"${TITLE}"'",
+                  "content": '"${CONTENT}"'
+                }
+              }
+            }
+          }'
+
+branding:
+  icon: 'message-circle'
+  color: 'blue'
