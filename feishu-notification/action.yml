@@ -57,69 +57,63 @@ runs:
         # Get current time
         CURRENT_TIME=$(date -u +'%Y-%m-%d %H:%M:%S')
 
-        # Set title and content based on status
+        # Set card content based on status
         if [ "${{ inputs.status }}" = "started" ]; then
           TITLE="🚀 ${{ inputs.project_name }} Build #${{ inputs.run_number }} Started"
-          CONTENT='[
-            [{"tag": "text", "text": "User: ${{ inputs.actor }}\n"}],
-            [{"tag": "text", "text": "Project: ${{ inputs.project_name }}\n"}],
-            [{"tag": "text", "text": "Branch: ${{ inputs.branch }}\n"}],
-            [{"tag": "text", "text": "Start Time: '"${CURRENT_TIME}"'\n"}],
-            [{"tag": "text", "text": "\n"}],
-            [{"tag": "text", "text": "Code: ${{ inputs.branch }} "},
-             {"tag": "a", "text": "${{ inputs.commit_sha }}", "href": "${{ inputs.commit_url }}"}],
-            [{"tag": "text", "text": "\nStatus: Building..."}]
-          ]'
+          TEMPLATE="grey"
+          CONTENT="**User:** ${{ inputs.actor }}\\n**Project:** ${{ inputs.project_name }}\\n**Branch:** ${{ inputs.branch }}\\n**Start Time:** ${CURRENT_TIME}\\n\\n**Commit:** [${{ inputs.commit_sha }}](${{ inputs.commit_url }})\\n\\n**Status:** Building..."
+          BUTTON_TEXT="View Workflow"
+          BUTTON_URL="${{ inputs.workflow_url }}"
         elif [ "${{ inputs.status }}" = "success" ]; then
           TITLE="✅ ${{ inputs.project_name }} Build #${{ inputs.run_number }} Succeeded"
-          CONTENT='[
-            [{"tag": "text", "text": "User: ${{ inputs.actor }}\n"}],
-            [{"tag": "text", "text": "Project: ${{ inputs.project_name }}\n"}],
-            [{"tag": "text", "text": "Branch: ${{ inputs.branch }}\n"}],
-            [{"tag": "text", "text": "Start Time: ${{ inputs.start_time }}\n"}],
-            [{"tag": "text", "text": "Completion Time: '"${CURRENT_TIME}"'\n"}],
-            [{"tag": "text", "text": "Duration: ${{ inputs.build_duration }}\n"}],
-            [{"tag": "text", "text": "\n"}],
-            [{"tag": "text", "text": "Code: ${{ inputs.branch }} "},
-             {"tag": "a", "text": "${{ inputs.commit_sha }}", "href": "${{ inputs.commit_url }}"}],
-            [{"tag": "text", "text": "\nCommit Message: ${{ inputs.commit_message }}\n"}],
-            [{"tag": "text", "text": "\n"}],
-            [{"tag": "text", "text": "Image: ${{ inputs.image_info }}\n"}],
-            [{"tag": "text", "text": "\n"}],
-            [{"tag": "text", "text": "Status: ✅ Pushed to ACR\n"}],
-            [{"tag": "text", "text": "\n"}],
-            [{"tag": "a", "text": "View Workflow", "href": "${{ inputs.workflow_url }}"}]
-          ]'
+          TEMPLATE="green"
+          CONTENT="**User:** ${{ inputs.actor }}\\n**Project:** ${{ inputs.project_name }}\\n**Branch:** ${{ inputs.branch }}\\n**Start Time:** ${{ inputs.start_time }}\\n**Duration:** ${{ inputs.build_duration }}\\n\\n**Commit:** [${{ inputs.commit_sha }}](${{ inputs.commit_url }})\\n**Message:** ${{ inputs.commit_message }}\\n\\n**Image:** \`${{ inputs.image_info }}\`\\n\\n**Status:** ✅ Pushed to ACR"
+          BUTTON_TEXT="View Workflow Details"
+          BUTTON_URL="${{ inputs.workflow_url }}"
         else
           TITLE="❌ ${{ inputs.project_name }} Build #${{ inputs.run_number }} Failed"
-          CONTENT='[
-            [{"tag": "text", "text": "User: ${{ inputs.actor }}\n"}],
-            [{"tag": "text", "text": "Project: ${{ inputs.project_name }}\n"}],
-            [{"tag": "text", "text": "Branch: ${{ inputs.branch }}\n"}],
-            [{"tag": "text", "text": "Start Time: ${{ inputs.start_time }}\n"}],
-            [{"tag": "text", "text": "Failure Time: '"${CURRENT_TIME}"'\n"}],
-            [{"tag": "text", "text": "\n"}],
-            [{"tag": "text", "text": "Code: ${{ inputs.branch }} "},
-             {"tag": "a", "text": "${{ inputs.commit_sha }}", "href": "${{ inputs.commit_url }}"}],
-            [{"tag": "text", "text": "\n"}],
-            [{"tag": "text", "text": "Status: ❌ Build or push failed\n"}],
-            [{"tag": "text", "text": "\n"}],
-            [{"tag": "a", "text": "View Error Logs", "href": "${{ inputs.workflow_url }}"}]
-          ]'
+          TEMPLATE="red"
+          CONTENT="**User:** ${{ inputs.actor }}\\n**Project:** ${{ inputs.project_name }}\\n**Branch:** ${{ inputs.branch }}\\n**Start Time:** ${{ inputs.start_time }}\\n**Failure Time:** ${CURRENT_TIME}\\n\\n**Commit:** [${{ inputs.commit_sha }}](${{ inputs.commit_url }})\\n\\n**Status:** ❌ Build or push failed"
+          BUTTON_TEXT="View Error Logs"
+          BUTTON_URL="${{ inputs.workflow_url }}"
         fi
 
-        # Send Feishu notification
+        # Send Feishu interactive card notification
         curl -X POST "${{ inputs.webhook_url }}" \
           -H 'Content-Type: application/json' \
           -d '{
-            "msg_type": "post",
-            "content": {
-              "post": {
-                "zh_cn": {
-                  "title": "'"${TITLE}"'",
-                  "content": '"${CONTENT}"'
+            "msg_type": "interactive",
+            "card": {
+              "config": {
+                "wide_screen_mode": true
+              },
+              "header": {
+                "title": {
+                  "tag": "plain_text",
+                  "content": "'"${TITLE}"'"
+                },
+                "template": "'"${TEMPLATE}"'"
+              },
+              "elements": [
+                {
+                  "tag": "markdown",
+                  "content": "'"${CONTENT}"'"
+                },
+                {
+                  "tag": "action",
+                  "actions": [
+                    {
+                      "tag": "button",
+                      "text": {
+                        "tag": "plain_text",
+                        "content": "'"${BUTTON_TEXT}"'"
+                      },
+                      "type": "primary",
+                      "url": "'"${BUTTON_URL}"'"
+                    }
+                  ]
                 }
-              }
+              ]
             }
           }'
 
